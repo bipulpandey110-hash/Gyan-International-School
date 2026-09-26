@@ -1,465 +1,362 @@
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ArrowRight,
-  ArrowUpRight,
-  Bell,
   CalendarDays,
-  ChevronRight,
   Clock3,
   MapPin,
+  Sparkles,
 } from "lucide-react";
 
 import { Link } from "react-router-dom";
-import schoolData from "../data/schoolData";
+import { schoolAPI } from "../services/api";
 import "./Events.css";
 
-const eventData = [
-  {
-    id: "event-01",
-    month: "SEP",
-    day: "28",
-    date: "28 September 2026",
-    type: "ACADEMIC",
-    title: "Academic Session & Learning",
-    description:
-      "A focused school day built around classroom learning, participation and student development.",
-    time: "09:00 AM",
-    location: "School Campus",
-  },
-  {
-    id: "event-02",
-    month: "OCT",
-    day: "02",
-    date: "02 October 2026",
-    type: "SCHOOL",
-    title: "School Community Day",
-    description:
-      "A day bringing together learning, participation and the wider school community.",
-    time: "10:00 AM",
-    location: "School Campus",
-  },
-  {
-    id: "event-03",
-    month: "OCT",
-    day: "12",
-    date: "12 October 2026",
-    type: "ACTIVITY",
-    title: "Student Activity Session",
-    description:
-      "An opportunity for students to participate, explore interests and learn beyond the classroom.",
-    time: "11:00 AM",
-    location: "Activity Area",
-  },
-  {
-    id: "event-04",
-    month: "OCT",
-    day: "24",
-    date: "24 October 2026",
-    type: "ACADEMIC",
-    title: "Learning Review",
-    description:
-      "A structured academic review focused on understanding, progress and future learning goals.",
-    time: "09:30 AM",
-    location: "School Campus",
-  },
-];
+function formatEventDate(dateValue) {
+  if (!dateValue) return "Date to be announced";
 
-const noticeData = [
-  {
-    id: "notice-01",
-    number: "01",
-    type: "NOTICE",
-    title: "Admissions & Enquiry",
-    description:
-      "Connect with the school team for admission information and general enquiries.",
-    action: "/admissions",
-    actionLabel: "Admissions",
-  },
-  {
-    id: "notice-02",
-    number: "02",
-    type: "INFORMATION",
-    title: "Academic Information",
-    description:
-      "Explore the academic structure and learning journey for Classes 0–10.",
-    action: "/academics",
-    actionLabel: "Academics",
-  },
-  {
-    id: "notice-03",
-    number: "03",
-    type: "SCHOOL LIFE",
-    title: "Campus & Student Experience",
-    description:
-      "Discover the spaces and experiences that form part of everyday school life.",
-    action: "/campus",
-    actionLabel: "Campus",
-  },
-];
+  const date = new Date(dateValue);
+
+  if (Number.isNaN(date.getTime())) {
+    return dateValue;
+  }
+
+  return date.toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function getEventMonth(dateValue) {
+  if (!dateValue) return "EVENT";
+
+  const date = new Date(dateValue);
+
+  if (Number.isNaN(date.getTime())) {
+    return "EVENT";
+  }
+
+  return date
+    .toLocaleDateString("en-IN", {
+      month: "short",
+    })
+    .toUpperCase();
+}
+
+function getEventDay(dateValue) {
+  if (!dateValue) return "--";
+
+  const date = new Date(dateValue);
+
+  if (Number.isNaN(date.getTime())) {
+    return "--";
+  }
+
+  return date.toLocaleDateString("en-IN", {
+    day: "2-digit",
+  });
+}
 
 function Events() {
-  const { school } = schoolData;
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const [activeFilter, setActiveFilter] = useState("ALL");
+  useEffect(() => {
+    let isMounted = true;
 
-  const filters = ["ALL", "ACADEMIC", "ACTIVITY", "SCHOOL"];
+    const loadEvents = async () => {
+      try {
+        setLoading(true);
+        setError("");
 
-  const filteredEvents = useMemo(() => {
-    if (activeFilter === "ALL") {
-      return eventData;
-    }
+        const response = await schoolAPI.getEvents();
 
-    return eventData.filter(
-      (event) => event.type === activeFilter
-    );
-  }, [activeFilter]);
+        if (!isMounted) return;
+
+        const eventList = Array.isArray(response)
+          ? response
+          : response?.results || [];
+
+        setEvents(eventList);
+      } catch (err) {
+        console.error("Events API error:", err);
+
+        if (!isMounted) return;
+
+        setError(
+          "Events are temporarily unavailable. Please try again shortly."
+        );
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadEvents();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const featuredEvents = events.filter((event) => event.is_featured);
+  const regularEvents = events.filter((event) => !event.is_featured);
 
   return (
-    <div className="events-page">
+    <section className="events-page">
       {/* HERO */}
-      <section className="events-hero">
+      <div className="events-hero">
+        <div className="events-hero-glow events-hero-glow-one" />
+        <div className="events-hero-glow events-hero-glow-two" />
+
         <div className="events-container">
-          <div className="events-hero-top">
-            <div className="events-kicker">
-              <span>01</span>
-              <span>EVENTS &amp; NOTICES</span>
+          <div className="events-hero-grid">
+            <div className="events-hero-content">
+              <span className="section-eyebrow">
+                <CalendarDays size={15} />
+                SCHOOL EVENTS
+              </span>
+
+              <h1>
+                Moments that bring
+                <span> our community together.</span>
+              </h1>
+
+              <p>
+                Stay connected with important school activities, celebrations,
+                programmes and events happening throughout the academic year.
+              </p>
+
+              <div className="events-hero-actions">
+                <Link to="/contact" className="events-primary-button">
+                  <span>Contact School</span>
+                  <ArrowRight size={17} />
+                </Link>
+
+                <Link to="/admissions" className="events-secondary-button">
+                  Admissions
+                </Link>
+              </div>
             </div>
 
-            <div className="events-hero-meta">
-              <span>{school.classes}</span>
-              <span className="events-meta-dot"></span>
-              <span>SCHOOL CALENDAR</span>
-            </div>
-          </div>
+            <div className="events-hero-card">
+              <div className="events-hero-card-icon">
+                <CalendarDays size={25} />
+              </div>
 
-          <div className="events-hero-content">
-            <span className="events-hero-label">
-              WHAT'S HAPPENING
-            </span>
-
-            <h1>
-              Stay connected
-              <span>with school life.</span>
-            </h1>
-
-            <p>
-              Follow important school information, upcoming
-              activities and moments from the academic journey.
-            </p>
-          </div>
-
-          <div className="events-hero-bottom">
-            <div>
-              <strong>04</strong>
-              <span>UPCOMING EVENTS</span>
-            </div>
-
-            <div>
-              <strong>03</strong>
-              <span>SCHOOL UPDATES</span>
-            </div>
-
-            <div>
-              <strong>01</strong>
-              <span>COMMUNITY</span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* INTRO */}
-      <section className="events-intro events-section">
-        <div className="events-container">
-          <div className="events-intro-grid">
-            <div className="events-intro-index">
-              <span>02</span>
+              <span>UPCOMING ACTIVITIES</span>
 
               <strong>
-                PLAN
-                <br />
-                PARTICIPATE
-                <br />
-                GROW
+                {String(events.length).padStart(2, "0")}
               </strong>
-            </div>
-
-            <div className="events-intro-content">
-              <div className="events-kicker">
-                <span>SCHOOL CALENDAR</span>
-              </div>
-
-              <h2>
-                Keep track of
-                <span>what matters.</span>
-              </h2>
 
               <p>
-                School life is more than classroom learning.
-                Events, activities and important updates create
-                opportunities for students and families to stay
-                informed and involved.
-              </p>
-
-              <p>
-                This section is structured to become fully
-                dynamic later, so events and notices can be
-                managed through the school backend.
+                Events currently published by the school.
               </p>
             </div>
           </div>
         </div>
-      </section>
+      </div>
 
       {/* EVENTS */}
-      <section className="events-list-section events-section">
-        <div className="events-container">
-          <div className="events-section-heading">
-            <div className="events-kicker">
-              <span>03</span>
-              <span>UPCOMING</span>
-            </div>
-
-            <div>
-              <h2>
-                What's coming
-                <span>next.</span>
-              </h2>
-
-              <p>
-                Upcoming activities and school moments.
-              </p>
-            </div>
-          </div>
-
-          {/* FILTERS */}
-          <div className="events-filters">
-            {filters.map((filter) => (
-              <button
-                key={filter}
-                type="button"
-                className={
-                  activeFilter === filter
-                    ? "active"
-                    : ""
-                }
-                onClick={() => setActiveFilter(filter)}
-              >
-                {filter}
-              </button>
-            ))}
-          </div>
-
-          {/* EVENT LIST */}
-          <div className="events-list">
-            {filteredEvents.map((event, index) => (
-              <article
-                className="event-row"
-                key={event.id}
-              >
-                <div className="event-date">
-                  <span>{event.month}</span>
-                  <strong>{event.day}</strong>
-                </div>
-
-                <div className="event-main">
-                  <div className="event-topline">
-                    <span>{event.type}</span>
-                    <span className="event-index">
-                      {String(index + 1).padStart(2, "0")}
-                    </span>
-                  </div>
-
-                  <h3>{event.title}</h3>
-
-                  <p>{event.description}</p>
-
-                  <div className="event-details">
-                    <span>
-                      <Clock3 size={14} />
-                      {event.time}
-                    </span>
-
-                    <span>
-                      <MapPin size={14} />
-                      {event.location}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="event-arrow">
-                  <ArrowUpRight size={19} />
-                </div>
-              </article>
-            ))}
-
-            {filteredEvents.length === 0 && (
-              <div className="events-empty">
-                <CalendarDays size={28} />
-                <h3>No events in this category.</h3>
-                <p>
-                  More school activities will appear here
-                  when they are added.
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-      </section>
-
-      {/* NOTICE BOARD */}
-      <section className="notice-section events-section">
-        <div className="events-container">
-          <div className="notice-heading">
-            <div className="events-kicker light">
-              <span>04</span>
-              <span>NOTICE BOARD</span>
-            </div>
-
-            <div>
-              <h2>
-                Important
-                <span>information.</span>
-              </h2>
-
-              <p>
-                Useful links and school information for
-                students and families.
-              </p>
-            </div>
-          </div>
-
-          <div className="notice-grid">
-            {noticeData.map((notice) => (
-              <article
-                className="notice-card"
-                key={notice.id}
-              >
-                <div className="notice-card-top">
-                  <span>{notice.number}</span>
-                  <Bell size={17} />
-                </div>
-
-                <span className="notice-type">
-                  {notice.type}
-                </span>
-
-                <h3>{notice.title}</h3>
-
-                <p>{notice.description}</p>
-
-                <Link to={notice.action}>
-                  <span>{notice.actionLabel}</span>
-                  <ArrowRight size={16} />
-                </Link>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* SCHOOL RHYTHM */}
-      <section className="events-rhythm events-section">
-        <div className="events-container">
-          <div className="events-rhythm-grid">
-            <div className="events-rhythm-content">
-              <div className="events-kicker">
-                <span>05</span>
-                <span>SCHOOL RHYTHM</span>
-              </div>
-
-              <h2>
-                Learning has
-                <span>a rhythm.</span>
-              </h2>
-
-              <p>
-                Every school day brings a combination of
-                learning, interaction, participation and
-                discovery.
-              </p>
-
-              <div className="rhythm-points">
-                <div>
-                  <span>01</span>
-                  <strong>Learn</strong>
-                  <small>
-                    Classroom and academic experiences.
-                  </small>
-                </div>
-
-                <div>
-                  <span>02</span>
-                  <strong>Participate</strong>
-                  <small>
-                    Activities and shared experiences.
-                  </small>
-                </div>
-
-                <div>
-                  <span>03</span>
-                  <strong>Connect</strong>
-                  <small>
-                    Building relationships and community.
-                  </small>
-                </div>
-              </div>
-            </div>
-
-            <div className="events-rhythm-visual">
-              <div className="rhythm-orbit orbit-one"></div>
-              <div className="rhythm-orbit orbit-two"></div>
-              <div className="rhythm-orbit orbit-three"></div>
-
-              <div className="rhythm-core">
-                <CalendarDays size={28} />
-                <strong>2026</strong>
-                <span>SCHOOL YEAR</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* CTA */}
-      <section className="events-final">
-        <div className="events-container">
-          <div className="events-final-inner">
-            <div className="events-kicker">
-              <span>06</span>
-              <span>STAY CONNECTED</span>
-            </div>
+      <div className="events-container">
+        <div className="events-heading-row">
+          <div>
+            <span className="events-mini-label">SCHOOL CALENDAR</span>
 
             <h2>
-              Want to know
-              <span>more?</span>
+              Upcoming school
+              <span> experiences.</span>
+            </h2>
+          </div>
+
+          <p>
+            From academic programmes to cultural celebrations, school events
+            give students opportunities to participate, learn and grow
+            together.
+          </p>
+        </div>
+
+        {loading && (
+          <div className="events-state">
+            <div className="events-loader" />
+            <h3>Loading school events</h3>
+            <p>Please wait while we load the latest events.</p>
+          </div>
+        )}
+
+        {!loading && error && (
+          <div className="events-state events-state-error">
+            <CalendarDays size={32} />
+            <h3>Unable to load events</h3>
+            <p>{error}</p>
+          </div>
+        )}
+
+        {!loading && !error && events.length === 0 && (
+          <div className="events-state">
+            <CalendarDays size={32} />
+            <h3>No events published yet</h3>
+            <p>
+              New school events will appear here once they are added through
+              the school administration panel.
+            </p>
+          </div>
+        )}
+
+        {!loading && !error && events.length > 0 && (
+          <>
+            {/* FEATURED EVENT */}
+            {featuredEvents.length > 0 && (
+              <div className="events-featured-section">
+                {featuredEvents.map((event) => (
+                  <article
+                    className="event-featured-card"
+                    key={event.id}
+                  >
+                    <div className="event-featured-image">
+                      {event.image_url ? (
+                        <img
+                          src={event.image_url}
+                          alt={event.title}
+                        />
+                      ) : (
+                        <div className="event-image-placeholder">
+                          <CalendarDays size={42} />
+                          <span>SCHOOL EVENT</span>
+                        </div>
+                      )}
+
+                      <div className="event-featured-overlay" />
+
+                      <div className="event-featured-badge">
+                        <Sparkles size={14} />
+                        FEATURED EVENT
+                      </div>
+
+                      <div className="event-featured-date">
+                        <strong>{getEventDay(event.event_date)}</strong>
+                        <span>{getEventMonth(event.event_date)}</span>
+                      </div>
+                    </div>
+
+                    <div className="event-featured-content">
+                      <span className="event-card-label">
+                        UPCOMING EVENT
+                      </span>
+
+                      <h3>{event.title}</h3>
+
+                      {event.description && (
+                        <p>{event.description}</p>
+                      )}
+
+                      <div className="event-meta-list">
+                        <div>
+                          <CalendarDays size={16} />
+                          <span>
+                            {formatEventDate(event.event_date)}
+                          </span>
+                        </div>
+
+                        {event.location && (
+                          <div>
+                            <MapPin size={16} />
+                            <span>{event.location}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+
+            {/* REGULAR EVENTS */}
+            {regularEvents.length > 0 && (
+              <div className="events-grid">
+                {regularEvents.map((event) => (
+                  <article className="event-card" key={event.id}>
+                    <div className="event-card-image">
+                      {event.image_url ? (
+                        <img
+                          src={event.image_url}
+                          alt={event.title}
+                        />
+                      ) : (
+                        <div className="event-image-placeholder">
+                          <CalendarDays size={32} />
+                          <span>EVENT</span>
+                        </div>
+                      )}
+
+                      <div className="event-card-date">
+                        <strong>{getEventDay(event.event_date)}</strong>
+                        <span>{getEventMonth(event.event_date)}</span>
+                      </div>
+                    </div>
+
+                    <div className="event-card-content">
+                      <span className="event-card-label">
+                        SCHOOL EVENT
+                      </span>
+
+                      <h3>{event.title}</h3>
+
+                      {event.description && (
+                        <p>{event.description}</p>
+                      )}
+
+                      <div className="event-card-meta">
+                        <div>
+                          <Clock3 size={15} />
+                          <span>
+                            {formatEventDate(event.event_date)}
+                          </span>
+                        </div>
+
+                        {event.location && (
+                          <div>
+                            <MapPin size={15} />
+                            <span>{event.location}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* CTA */}
+      <div className="events-container">
+        <div className="events-cta">
+          <div>
+            <span className="events-mini-label">STAY CONNECTED</span>
+
+            <h2>
+              Have a question about
+              <span> an upcoming event?</span>
             </h2>
 
             <p>
-              Explore admissions or contact the school team
-              for more information about the school journey.
+              Contact the school office for event timings, participation
+              details and other information.
             </p>
-
-            <div className="events-final-actions">
-              <Link
-                to="/admissions"
-                className="events-primary-button"
-              >
-                <span>Admissions</span>
-                <ArrowUpRight size={17} />
-              </Link>
-
-              <Link
-                to="/contact"
-                className="events-secondary-button"
-              >
-                <span>Contact School</span>
-                <ArrowRight size={17} />
-              </Link>
-            </div>
           </div>
+
+          <Link to="/contact" className="events-cta-button">
+            <span>Contact School</span>
+            <ArrowRight size={18} />
+          </Link>
         </div>
-      </section>
-    </div>
+      </div>
+    </section>
   );
 }
 

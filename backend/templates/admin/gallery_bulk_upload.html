@@ -1,0 +1,166 @@
+{% extends "admin/base_site.html" %}
+
+{% block title %}
+    Bulk Upload Gallery Images
+{% endblock %}
+
+{% block content %}
+
+<div id="content-main">
+
+    <div style="
+        max-width: 900px;
+        background: #ffffff;
+        border: 1px solid #dbe7f3;
+        border-radius: 14px;
+        padding: 28px;
+        margin-bottom: 24px;
+        box-shadow: 0 4px 18px rgba(16, 42, 67, 0.06);
+    ">
+
+        <h1 style="
+            margin: 0 0 8px;
+            font-size: 28px;
+        ">
+            Bulk Upload Gallery Images
+        </h1>
+
+        <p style="
+            color: #5b7083;
+            margin-bottom: 24px;
+        ">
+            Upload multiple school photos at once.
+            Each selected photo will automatically become
+            a separate gallery image.
+        </p>
+
+        <form
+            method="post"
+            enctype="multipart/form-data"
+        >
+
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+                <div class="errornote">
+                    {{ form.non_field_errors }}
+                </div>
+            {% endif %}
+
+            <fieldset class="module aligned">
+
+                <div class="form-row">
+                    {{ form.images.errors }}
+
+                    <div>
+                        <label
+                            for="{{ form.images.id_for_label }}"
+                            class="required"
+                        >
+                            {{ form.images.label }}:
+                        </label>
+
+                        {{ form.images }}
+
+                        {% if form.images.help_text %}
+                            <p class="help">
+                                {{ form.images.help_text }}
+                            </p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    {{ form.category.errors }}
+
+                    <div>
+                        <label
+                            for="{{ form.category.id_for_label }}"
+                        >
+                            {{ form.category.label }}:
+                        </label>
+
+                        {{ form.category }}
+
+                        {% if form.category.help_text %}
+                            <p class="help">
+                                {{ form.category.help_text }}
+                            </p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    {{ form.description.errors }}
+
+                    <div>
+                        <label
+                            for="{{ form.description.id_for_label }}"
+                        >
+                            {{ form.description.label }}:
+                        </label>
+
+                        {{ form.description }}
+
+                        {% if form.description.help_text %}
+                            <p class="help">
+                                {{ form.description.help_text }}
+                            </p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    {{ form.is_featured.errors }}
+
+                    <div>
+                        {{ form.is_featured }}
+
+                        <label
+                            for="{{ form.is_featured.id_for_label }}"
+                        >
+                            {{ form.is_featured.label }}
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    {{ form.is_active.errors }}
+
+                    <div>
+                        {{ form.is_active }}
+
+                        <label
+                            for="{{ form.is_active.id_for_label }}"
+                        >
+                            {{ form.is_active.label }}
+                        </label>
+                    </div>
+                </div>
+
+            </fieldset>
+
+            <div class="submit-row">
+
+                <input
+                    type="submit"
+                    value="Upload Images"
+                    class="default"
+                />
+
+                <a
+                    href="{% url 'admin:api_galleryimage_changelist' %}"
+                    class="button"
+                >
+                    Cancel
+                </a>
+
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
+
+{% endblock %}

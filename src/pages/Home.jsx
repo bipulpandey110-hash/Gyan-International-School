@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import {
   ArrowRight,
   ArrowUpRight,
@@ -7,9 +8,10 @@ import {
   Sparkles,
   ChevronRight,
 } from "lucide-react";
-
 import { Link } from "react-router-dom";
+
 import schoolData from "../data/schoolData";
+import schoolAPI from "../services/api";
 import "./home.css";
 
 function ImageBlock({ src, alt, className = "" }) {
@@ -22,13 +24,180 @@ function ImageBlock({ src, alt, className = "" }) {
 
 function Home() {
   const {
-    school,
+    school: localSchool,
     images,
     values,
     academicLevels,
     highlights,
     admissions,
   } = schoolData;
+
+  const [school, setSchool] = useState(localSchool);
+  const [academicPrograms, setAcademicPrograms] = useState([]);
+  const [facilities, setFacilities] = useState([]);
+  const [achievements, setAchievements] = useState([]);
+
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadHomeData = async () => {
+      try {
+        const [
+          schoolResponse,
+          academicResponse,
+          facilityResponse,
+          achievementResponse,
+        ] = await Promise.all([
+          schoolAPI.getSchool(),
+          schoolAPI.getAcademics(),
+          schoolAPI.getFacilities(),
+          schoolAPI.getAchievements(),
+        ]);
+
+        if (!mounted) return;
+
+        // =====================================================
+        // SCHOOL INFORMATION
+        // =====================================================
+
+        const schoolRecord = Array.isArray(schoolResponse)
+          ? schoolResponse[0]
+          : schoolResponse;
+
+        if (schoolRecord) {
+          setSchool((current) => ({
+            ...current,
+
+            fullName:
+              schoolRecord.name ||
+              current.fullName,
+
+            shortName:
+              schoolRecord.short_name ||
+              current.shortName,
+
+            tagline:
+              schoolRecord.tagline ||
+              current.tagline,
+
+            description:
+              schoolRecord.description ||
+              current.description,
+
+            classes:
+              schoolRecord.classes ||
+              current.classes,
+
+            address:
+              schoolRecord.address ||
+              current.address,
+
+            phone:
+              schoolRecord.phone ||
+              current.phone,
+
+            email:
+              schoolRecord.email ||
+              current.email,
+
+            year:
+              schoolRecord.established_year ||
+              current.year,
+          }));
+        }
+
+        // =====================================================
+        // ACADEMIC PROGRAMS
+        // =====================================================
+
+        const academicData = Array.isArray(academicResponse)
+          ? academicResponse
+          : academicResponse?.results || [];
+
+        setAcademicPrograms(academicData);
+
+        // =====================================================
+        // FACILITIES
+        // =====================================================
+
+        const facilityData = Array.isArray(facilityResponse)
+          ? facilityResponse
+          : facilityResponse?.results || [];
+
+        setFacilities(facilityData);
+
+        // =====================================================
+        // ACHIEVEMENTS
+        // =====================================================
+
+        const achievementData = Array.isArray(achievementResponse)
+          ? achievementResponse
+          : achievementResponse?.results || [];
+
+        setAchievements(achievementData);
+      } catch (error) {
+        console.error(
+          "Failed to load Home page API data:",
+          error
+        );
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadHomeData();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  // =========================================================
+  // FALLBACK ACADEMIC DATA
+  // =========================================================
+
+  const displayAcademicLevels =
+    academicPrograms.length > 0
+      ? academicPrograms.map((program, index) => ({
+          id: program.id,
+          number: String(index + 1).padStart(2, "0"),
+          classes:
+            program.class_name ||
+            "Academic Programme",
+          title:
+            program.title ||
+            "Learning Programme",
+          description:
+            program.description ||
+            "A structured learning programme designed to support student growth.",
+        }))
+      : academicLevels;
+
+  // =========================================================
+  // FALLBACK FACILITIES
+  // =========================================================
+
+  const displayFacilities =
+    facilities.length > 0
+      ? facilities.slice(0, 3)
+      : [
+          {
+            id: "facility-1",
+            title: "Learning Spaces",
+          },
+          {
+            id: "facility-2",
+            title: "Activity & Participation",
+          },
+          {
+            id: "facility-3",
+            title: "Community & Belonging",
+          },
+        ];
 
   return (
     <div className="home-page">
@@ -44,9 +213,16 @@ function Home() {
 
             <div className="home-eyebrow">
               <span className="eyebrow-dot"></span>
-              <span>{school.classes}</span>
+
+              <span>
+                {school.classes || "Classes 0 to 10"}
+              </span>
+
               <span className="eyebrow-line"></span>
-              <span>{school.year}</span>
+
+              <span>
+                {school.year || "2026"}
+              </span>
             </div>
 
             <h1>
@@ -55,24 +231,36 @@ function Home() {
             </h1>
 
             <p className="home-hero-description">
-              {school.tagline} We create a learning environment where
-              students can build knowledge, confidence, character and
-              the skills needed for their future.
+              {school.tagline ||
+                "Learn. Grow. Lead."}{" "}
+              We create a learning environment where
+              students can build knowledge, confidence,
+              character and the skills needed for their
+              future.
             </p>
 
             <div className="home-hero-actions">
-              <Link to="/admissions" className="primary-action">
+
+              <Link
+                to="/admissions"
+                className="primary-action"
+              >
                 <span>Explore Admissions</span>
                 <ArrowUpRight size={18} />
               </Link>
 
-              <Link to="/about" className="secondary-action">
+              <Link
+                to="/about"
+                className="secondary-action"
+              >
                 <span>Discover the School</span>
                 <ArrowRight size={18} />
               </Link>
+
             </div>
 
             <div className="home-hero-meta">
+
               <div>
                 <strong>0–10</strong>
                 <span>Classes</span>
@@ -81,16 +269,21 @@ function Home() {
               <div className="meta-divider"></div>
 
               <div>
-                <strong>4</strong>
+                <strong>
+                  {displayAcademicLevels.length || 4}
+                </strong>
                 <span>Learning Stages</span>
               </div>
 
               <div className="meta-divider"></div>
 
               <div>
-                <strong>2026</strong>
+                <strong>
+                  {school.year || "2026"}
+                </strong>
                 <span>School Year</span>
               </div>
+
             </div>
 
           </div>
@@ -98,14 +291,17 @@ function Home() {
           <div className="home-hero-visual">
 
             <div className="hero-image-frame">
+
               <ImageBlock
                 src={images.hero.main}
-                alt={`${school.fullName} campus`}
+                alt={`${school.fullName || "Gyan International Future Training Res School"} campus`}
                 className="hero-main-image"
               />
+
             </div>
 
             <div className="hero-floating-card">
+
               <div className="floating-icon">
                 <GraduationCap size={20} />
               </div>
@@ -114,6 +310,7 @@ function Home() {
                 <span>Our Focus</span>
                 <strong>Learning & Growth</strong>
               </div>
+
             </div>
 
             <div className="hero-number">
@@ -132,6 +329,7 @@ function Home() {
       ===================================================== */}
 
       <section className="home-intro section-space">
+
         <div className="home-container">
 
           <div className="section-heading-row">
@@ -142,17 +340,17 @@ function Home() {
             </div>
 
             <div className="section-heading-copy">
+
               <h2>
                 A place where
                 <span>learning becomes growth.</span>
               </h2>
 
               <p>
-                Gyan International Future Training Res School is focused
-                on creating a meaningful educational environment for
-                students from the foundation years through secondary
-                school.
+                {school.description ||
+                  "Gyan International Future Training Res School is focused on creating a meaningful educational environment for students from the foundation years through secondary school."}
               </p>
+
             </div>
 
           </div>
@@ -166,16 +364,22 @@ function Home() {
                 <BookOpen size={23} />
               </div>
 
-              <span className="card-index">01</span>
+              <span className="card-index">
+                01
+              </span>
 
               <h3>Strong Foundations</h3>
 
               <p>
-                Building clear academic foundations through curiosity,
-                understanding and consistent learning.
+                Building clear academic foundations
+                through curiosity, understanding and
+                consistent learning.
               </p>
 
-              <Link to="/academics" className="inline-link">
+              <Link
+                to="/academics"
+                className="inline-link"
+              >
                 <span>Explore academics</span>
                 <ArrowRight size={17} />
               </Link>
@@ -189,16 +393,22 @@ function Home() {
                 <Users size={23} />
               </div>
 
-              <span className="card-index">02</span>
+              <span className="card-index">
+                02
+              </span>
 
               <h3>Student Development</h3>
 
               <p>
-                Supporting students beyond textbooks through confidence,
-                communication, participation and character.
+                Supporting students beyond textbooks
+                through confidence, communication,
+                participation and character.
               </p>
 
-              <Link to="/about" className="inline-link">
+              <Link
+                to="/about"
+                className="inline-link"
+              >
                 <span>Our approach</span>
                 <ArrowRight size={17} />
               </Link>
@@ -212,16 +422,22 @@ function Home() {
                 <Sparkles size={23} />
               </div>
 
-              <span className="card-index">03</span>
+              <span className="card-index">
+                03
+              </span>
 
               <h3>Future Readiness</h3>
 
               <p>
-                Helping students develop the mindset, habits and skills
-                needed for the changing world.
+                Helping students develop the mindset,
+                habits and skills needed for the
+                changing world.
               </p>
 
-              <Link to="/about" className="inline-link">
+              <Link
+                to="/about"
+                className="inline-link"
+              >
                 <span>Know more</span>
                 <ArrowRight size={17} />
               </Link>
@@ -231,6 +447,7 @@ function Home() {
           </div>
 
         </div>
+
       </section>
 
 
@@ -239,6 +456,7 @@ function Home() {
       ===================================================== */}
 
       <section className="home-highlights section-space">
+
         <div className="home-container">
 
           <div className="section-heading-row compact">
@@ -249,10 +467,12 @@ function Home() {
             </div>
 
             <div className="section-heading-copy">
+
               <h2>
                 More than
                 <span>just academics.</span>
               </h2>
+
             </div>
 
           </div>
@@ -260,8 +480,12 @@ function Home() {
 
           <div className="highlight-list">
 
-            {highlights.map((item, index) => (
-              <div className="highlight-row" key={item.number}>
+            {highlights.map((item) => (
+
+              <div
+                className="highlight-row"
+                key={item.number}
+              >
 
                 <div className="highlight-number">
                   {item.number}
@@ -280,11 +504,13 @@ function Home() {
                 </div>
 
               </div>
+
             ))}
 
           </div>
 
         </div>
+
       </section>
 
 
@@ -299,6 +525,7 @@ function Home() {
           <div className="experience-header">
 
             <div>
+
               <div className="section-kicker">
                 <span>03</span>
                 <span>STUDENT EXPERIENCE</span>
@@ -308,9 +535,13 @@ function Home() {
                 Everyday moments.
                 <span>Meaningful growth.</span>
               </h2>
+
             </div>
 
-            <Link to="/gallery" className="outline-action">
+            <Link
+              to="/gallery"
+              className="outline-action"
+            >
               <span>View Gallery</span>
               <ArrowUpRight size={18} />
             </Link>
@@ -320,35 +551,43 @@ function Home() {
 
           <div className="experience-grid">
 
-            {images.students.slice(0, 3).map((student, index) => (
+            {images.students
+              .slice(0, 3)
+              .map((student, index) => (
 
-              <article
-                className={`experience-card experience-card-${index + 1}`}
-                key={student.id}
-              >
+                <article
+                  className={`experience-card experience-card-${index + 1}`}
+                  key={student.id}
+                >
 
-                <ImageBlock
-                  src={student.src}
-                  alt={student.title}
-                />
+                  <ImageBlock
+                    src={student.src}
+                    alt={student.title}
+                  />
 
-                <div className="experience-overlay">
+                  <div className="experience-overlay">
 
-                  <span>{student.label}</span>
+                    <span>
+                      {student.label}
+                    </span>
 
-                  <div className="experience-card-bottom">
-                    <h3>{student.title}</h3>
+                    <div className="experience-card-bottom">
 
-                    <div className="experience-arrow">
-                      <ArrowUpRight size={17} />
+                      <h3>
+                        {student.title}
+                      </h3>
+
+                      <div className="experience-arrow">
+                        <ArrowUpRight size={17} />
+                      </div>
+
                     </div>
+
                   </div>
 
-                </div>
+                </article>
 
-              </article>
-
-            ))}
+              ))}
 
           </div>
 
@@ -380,8 +619,9 @@ function Home() {
               </h2>
 
               <p>
-                From early foundations to secondary education, each
-                stage is designed around the changing needs of students.
+                From early foundations to secondary
+                education, each stage is designed
+                around the changing needs of students.
               </p>
 
             </div>
@@ -391,7 +631,7 @@ function Home() {
 
           <div className="academic-list">
 
-            {academicLevels.map((level) => (
+            {displayAcademicLevels.map((level) => (
 
               <Link
                 to="/academics"
@@ -404,11 +644,20 @@ function Home() {
                 </div>
 
                 <div className="academic-main">
-                  <span>{level.classes}</span>
-                  <h3>{level.title}</h3>
+
+                  <span>
+                    {level.classes}
+                  </span>
+
+                  <h3>
+                    {level.title}
+                  </h3>
+
                 </div>
 
-                <p>{level.description}</p>
+                <p>
+                  {level.description}
+                </p>
 
                 <div className="academic-arrow">
                   <ArrowUpRight size={20} />
@@ -446,11 +695,15 @@ function Home() {
             </h2>
 
             <p>
-              Education is not only about what students learn.
-              It is also about who they become.
+              Education is not only about what
+              students learn. It is also about who
+              they become.
             </p>
 
-            <Link to="/about" className="light-action">
+            <Link
+              to="/about"
+              className="light-action"
+            >
               <span>Our philosophy</span>
               <ArrowRight size={18} />
             </Link>
@@ -462,7 +715,10 @@ function Home() {
 
             {values.map((value, index) => (
 
-              <div className="value-card" key={value.title}>
+              <div
+                className="value-card"
+                key={value.title}
+              >
 
                 <span className="value-number">
                   0{index + 1}
@@ -472,9 +728,13 @@ function Home() {
                   <Sparkles size={18} />
                 </div>
 
-                <h3>{value.title}</h3>
+                <h3>
+                  {value.title}
+                </h3>
 
-                <p>{value.description}</p>
+                <p>
+                  {value.description}
+                </p>
 
               </div>
 
@@ -500,7 +760,10 @@ function Home() {
             <div className="campus-image">
 
               <ImageBlock
-                src={images.campus[0]?.src || images.hero.main}
+                src={
+                  images.campus[0]?.src ||
+                  images.hero.main
+                }
                 alt="Gyan International school environment"
               />
 
@@ -525,33 +788,43 @@ function Home() {
               </h2>
 
               <p>
-                A positive school environment helps students feel
-                comfortable, participate actively and build confidence
-                throughout their learning journey.
+                A positive school environment helps
+                students feel comfortable, participate
+                actively and build confidence throughout
+                their learning journey.
               </p>
 
 
               <div className="campus-points">
 
-                <div>
-                  <span>01</span>
-                  <strong>Learning Spaces</strong>
-                </div>
+                {displayFacilities.map(
+                  (facility, index) => (
 
-                <div>
-                  <span>02</span>
-                  <strong>Activity & Participation</strong>
-                </div>
+                    <div key={facility.id}>
 
-                <div>
-                  <span>03</span>
-                  <strong>Community & Belonging</strong>
-                </div>
+                      <span>
+                        {String(index + 1).padStart(
+                          2,
+                          "0"
+                        )}
+                      </span>
+
+                      <strong>
+                        {facility.title}
+                      </strong>
+
+                    </div>
+
+                  )
+                )}
 
               </div>
 
 
-              <Link to="/campus" className="primary-action dark-button">
+              <Link
+                to="/campus"
+                className="primary-action dark-button"
+              >
                 <span>Explore Campus</span>
                 <ArrowUpRight size={18} />
               </Link>
@@ -591,8 +864,14 @@ function Home() {
                 {admissions.description}
               </p>
 
-              <Link to="/admissions" className="primary-action">
-                <span>{admissions.title}</span>
+              <Link
+                to="/admissions"
+                className="primary-action"
+              >
+                <span>
+                  {admissions.title}
+                </span>
+
                 <ArrowUpRight size={18} />
               </Link>
 
@@ -602,13 +881,22 @@ function Home() {
             <div className="admission-image">
 
               <ImageBlock
-                src={images.gallery[5]?.src || images.hero.main}
+                src={
+                  images.gallery[5]?.src ||
+                  images.hero.main
+                }
                 alt="Students at Gyan International"
               />
 
               <div className="admission-image-badge">
+
                 <GraduationCap size={20} />
-                <span>Classes 0–10</span>
+
+                <span>
+                  {school.classes ||
+                    "Classes 0–10"}
+                </span>
+
               </div>
 
             </div>
@@ -618,6 +906,86 @@ function Home() {
         </div>
 
       </section>
+
+
+      {/* =====================================================
+          ACHIEVEMENTS
+      ===================================================== */}
+
+      {achievements.length > 0 && (
+
+        <section className="home-highlights section-space">
+
+          <div className="home-container">
+
+            <div className="section-heading-row compact">
+
+              <div className="section-kicker">
+                <span>08</span>
+                <span>SCHOOL DEVELOPMENT</span>
+              </div>
+
+              <div className="section-heading-copy">
+
+                <h2>
+                  Growing through
+                  <span>learning & participation.</span>
+                </h2>
+
+              </div>
+
+            </div>
+
+
+            <div className="highlight-list">
+
+              {achievements
+                .slice(0, 3)
+                .map((achievement, index) => (
+
+                  <div
+                    className="highlight-row"
+                    key={achievement.id}
+                  >
+
+                    <div className="highlight-number">
+                      {String(index + 1).padStart(
+                        2,
+                        "0"
+                      )}
+                    </div>
+
+                    <div className="highlight-title">
+
+                      <h3>
+                        {achievement.title}
+                      </h3>
+
+                    </div>
+
+                    <div className="highlight-description">
+
+                      <p>
+                        {achievement.description}
+                      </p>
+
+                    </div>
+
+                    <div className="highlight-arrow">
+                      <ChevronRight size={20} />
+                    </div>
+
+                  </div>
+
+                ))}
+
+            </div>
+
+          </div>
+
+        </section>
+
+      )}
 
 
       {/* =====================================================
@@ -631,7 +999,7 @@ function Home() {
           <div className="final-cta-inner">
 
             <div className="section-kicker">
-              <span>08</span>
+              <span>09</span>
               <span>CONNECT WITH US</span>
             </div>
 
@@ -641,18 +1009,25 @@ function Home() {
             </h2>
 
             <p>
-              Explore the school, discover our approach and connect
-              with the school team for admissions and enquiries.
+              Explore the school, discover our
+              approach and connect with the school
+              team for admissions and enquiries.
             </p>
 
             <div className="final-cta-actions">
 
-              <Link to="/contact" className="primary-action">
+              <Link
+                to="/contact"
+                className="primary-action"
+              >
                 <span>Contact School</span>
                 <ArrowUpRight size={18} />
               </Link>
 
-              <Link to="/gallery" className="secondary-action">
+              <Link
+                to="/gallery"
+                className="secondary-action"
+              >
                 <span>View School Gallery</span>
                 <ArrowRight size={18} />
               </Link>

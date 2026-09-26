@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import {
   ArrowRight,
   ArrowUpRight,
@@ -9,6 +10,7 @@ import {
 
 import { Link } from "react-router-dom";
 import schoolData from "../data/schoolData";
+import schoolAPI from "../services/api";
 import "./faculty.css";
 
 function FacultyImage({ src, alt, initials = "GI" }) {
@@ -27,52 +29,96 @@ function FacultyImage({ src, alt, initials = "GI" }) {
 }
 
 function Faculty() {
-  const {
-    school,
-    images,
-    facultyCategories,
-  } = schoolData;
+  const { school, facultyCategories } = schoolData;
 
-  const facultyMembers = Array.isArray(images.faculty)
-    ? images.faculty
-    : [];
+  const [leadership, setLeadership] = useState([]);
+  const [teachingFaculty, setTeachingFaculty] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [apiError, setApiError] = useState("");
 
-  const leadership = facultyMembers.filter(
-    (member) =>
-      member.category === "Leadership" ||
-      member.category === "Principal" ||
-      member.category === "Director"
-  );
+  useEffect(() => {
+    let mounted = true;
 
-  const teachingFaculty = facultyMembers.filter(
-    (member) =>
-      !(
-        member.category === "Leadership" ||
-        member.category === "Principal" ||
-        member.category === "Director"
-      )
-  );
+    const loadFaculty = async () => {
+      try {
+        setLoading(true);
+        setApiError("");
+
+        const [leadershipResponse, facultyResponse] =
+          await Promise.all([
+            schoolAPI.getLeadership(),
+            schoolAPI.getFaculty(),
+          ]);
+
+        if (!mounted) return;
+
+        const leadershipData = Array.isArray(leadershipResponse)
+          ? leadershipResponse
+          : leadershipResponse?.results || [];
+
+        const facultyData = Array.isArray(facultyResponse)
+          ? facultyResponse
+          : facultyResponse?.results || [];
+
+        const formattedLeadership = leadershipData.map((member) => ({
+          id: member.id,
+          name: member.name,
+          role: member.role === "principal"
+            ? "Principal"
+            : member.role === "director"
+            ? "Director"
+            : member.designation || "Leadership",
+          designation: member.designation,
+          description: member.message || member.bio || "",
+          src: member.photo_url || member.photo || "",
+          initials:
+            member.name?.charAt(0)?.toUpperCase() || "GI",
+        }));
+
+        const formattedFaculty = facultyData.map((member) => ({
+          id: member.id,
+          name: member.name,
+          role: member.designation || "Teaching Faculty",
+          subject: member.subject,
+          description: member.bio || "",
+          src: member.photo_url || member.photo || "",
+          initials:
+            member.name?.charAt(0)?.toUpperCase() || "GI",
+        }));
+
+        setLeadership(formattedLeadership);
+        setTeachingFaculty(formattedFaculty);
+      } catch (error) {
+        console.error("Faculty API error:", error);
+
+        if (mounted) {
+          setApiError(
+            "Faculty information could not be loaded from the school server."
+          );
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadFaculty();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const leadershipDisplay = leadership.slice(0, 3);
-
-  const teachingDisplay =
-    teachingFaculty.length > 0
-      ? teachingFaculty
-      : facultyMembers;
 
   return (
     <div className="faculty-page">
 
-      {/* =====================================================
-          HERO
-      ===================================================== */}
-
+      {/* HERO */}
       <section className="faculty-hero">
-
         <div className="faculty-container">
-
           <div className="faculty-hero-top">
-
             <div className="faculty-kicker">
               <span>01</span>
               <span>OUR PEOPLE</span>
@@ -82,12 +128,9 @@ function Faculty() {
               <span>{school.classes}</span>
               <strong>GI</strong>
             </div>
-
           </div>
 
-
           <div className="faculty-hero-content">
-
             <span className="faculty-hero-label">
               FACULTY &amp; LEADERSHIP
             </span>
@@ -102,12 +145,9 @@ function Faculty() {
               support and encourage students throughout their
               learning journey.
             </p>
-
           </div>
 
-
           <div className="faculty-hero-bottom">
-
             <div>
               <strong>01</strong>
               <span>LEADERSHIP</span>
@@ -122,24 +162,14 @@ function Faculty() {
               <strong>03</strong>
               <span>SUPPORT</span>
             </div>
-
           </div>
-
         </div>
-
       </section>
 
-
-      {/* =====================================================
-          INTRODUCTION
-      ===================================================== */}
-
+      {/* INTRODUCTION */}
       <section className="faculty-intro faculty-section">
-
         <div className="faculty-container">
-
           <div className="faculty-intro-grid">
-
             <div className="faculty-intro-index">
               <span>02</span>
 
@@ -152,9 +182,7 @@ function Faculty() {
               </strong>
             </div>
 
-
             <div className="faculty-intro-content">
-
               <div className="faculty-kicker">
                 <span>THE PEOPLE</span>
               </div>
@@ -176,33 +204,21 @@ function Faculty() {
                 across different stages of their academic journey,
                 from the foundation years through secondary school.
               </p>
-
             </div>
-
           </div>
-
         </div>
-
       </section>
 
-
-      {/* =====================================================
-          LEADERSHIP
-      ===================================================== */}
-
+      {/* LEADERSHIP */}
       <section className="faculty-leadership faculty-section">
-
         <div className="faculty-container">
-
           <div className="faculty-section-heading">
-
             <div className="faculty-kicker">
               <span>03</span>
               <span>SCHOOL LEADERSHIP</span>
             </div>
 
             <div>
-
               <h2>
                 Guidance with
                 <span>clear direction.</span>
@@ -213,18 +229,27 @@ function Faculty() {
                 environment, student development and wider school
                 experience.
               </p>
-
             </div>
-
           </div>
 
+          {loading ? (
+            <div className="faculty-empty-leadership">
+              <div className="faculty-empty-icon">
+                <GraduationCap size={25} />
+              </div>
 
-          {leadershipDisplay.length > 0 ? (
-
+              <div>
+                <span>LOADING LEADERSHIP</span>
+                <h3>Loading Principal &amp; Director...</h3>
+                <p>
+                  School leadership information is being loaded
+                  from the school server.
+                </p>
+              </div>
+            </div>
+          ) : leadershipDisplay.length > 0 ? (
             <div className="faculty-leadership-grid">
-
               {leadershipDisplay.map((member, index) => (
-
                 <article
                   className={`faculty-leader-card ${
                     index === 0
@@ -233,90 +258,60 @@ function Faculty() {
                   }`}
                   key={member.id || member.name || index}
                 >
-
                   <FacultyImage
                     src={member.src}
                     alt={member.name || "School leader"}
-                    initials={
-                      member.initials ||
-                      member.name?.charAt(0) ||
-                      "GI"
-                    }
+                    initials={member.initials || "GI"}
                   />
 
                   <div className="faculty-leader-content">
-
                     <span>
-                      {member.role || member.category || "Leadership"}
+                      {member.role || "Leadership"}
                     </span>
 
-                    <h3>
-                      {member.name || "School Leadership"}
-                    </h3>
+                    <h3>{member.name || "School Leadership"}</h3>
 
                     {member.description && (
                       <p>{member.description}</p>
                     )}
-
                   </div>
-
                 </article>
-
               ))}
-
             </div>
-
           ) : (
-
             <div className="faculty-empty-leadership">
-
               <div className="faculty-empty-icon">
                 <GraduationCap size={25} />
               </div>
 
               <div>
-
                 <span>LEADERSHIP PROFILES</span>
 
                 <h3>
                   Principal &amp; Director profiles
-                  can be added here.
+                  are not available.
                 </h3>
 
                 <p>
-                  Add the leadership photos and information to
-                  <strong> schoolData.js</strong>. The website
-                  will display them here automatically.
+                  Add leadership information through the
+                  Django Admin panel.
                 </p>
-
               </div>
-
             </div>
-
           )}
-
         </div>
-
       </section>
 
-
-      {/* =====================================================
-          TEACHING FACULTY
-      ===================================================== */}
-
+      {/* TEACHING FACULTY */}
       <section className="faculty-teaching faculty-section">
-
         <div className="faculty-container">
-
           <div className="faculty-section-heading">
-
             <div className="faculty-kicker">
               <span>04</span>
               <span>TEACHING FACULTY</span>
             </div>
 
             <div>
-
               <h2>
                 Supporting students
                 <span>every day.</span>
@@ -326,43 +321,45 @@ function Faculty() {
                 Teachers support students through classroom learning,
                 subject understanding, communication and participation.
               </p>
-
             </div>
-
           </div>
 
+          {loading ? (
+            <div className="faculty-empty-state">
+              <div className="faculty-empty-state-icon">
+                <Users size={25} />
+              </div>
 
-          {teachingDisplay.length > 0 ? (
-
+              <div>
+                <span>FACULTY DIRECTORY</span>
+                <h3>Loading faculty...</h3>
+                <p>
+                  Faculty information is being loaded from
+                  the school server.
+                </p>
+              </div>
+            </div>
+          ) : teachingFaculty.length > 0 ? (
             <div className="faculty-grid">
-
-              {teachingDisplay.map((member, index) => (
-
+              {teachingFaculty.map((member, index) => (
                 <article
                   className="faculty-card"
                   key={member.id || member.name || index}
                 >
-
                   <FacultyImage
                     src={member.src}
                     alt={member.name || "Faculty member"}
-                    initials={
-                      member.initials ||
-                      member.name?.charAt(0) ||
-                      "GI"
-                    }
+                    initials={member.initials || "GI"}
                   />
 
                   <div className="faculty-card-content">
-
                     <div className="faculty-card-number">
-                      0{index + 1}
+                      {String(index + 1).padStart(2, "0")}
                     </div>
 
                     <span>
                       {member.role ||
                         member.subject ||
-                        member.category ||
                         "Teaching Faculty"}
                     </span>
 
@@ -373,25 +370,17 @@ function Faculty() {
                     {member.description && (
                       <p>{member.description}</p>
                     )}
-
                   </div>
-
                 </article>
-
               ))}
-
             </div>
-
           ) : (
-
             <div className="faculty-empty-state">
-
               <div className="faculty-empty-state-icon">
                 <Users size={25} />
               </div>
 
               <div>
-
                 <span>FACULTY DIRECTORY</span>
 
                 <h3>
@@ -399,39 +388,37 @@ function Faculty() {
                 </h3>
 
                 <p>
-                  Add teacher information and photos inside the
-                  <strong> faculty</strong> data array. The page
-                  is already prepared for dynamic faculty profiles.
+                  Teacher information and photos can be added
+                  directly through the Django Admin panel.
                 </p>
-
               </div>
-
             </div>
-
           )}
 
+          {apiError && (
+            <p
+              style={{
+                marginTop: "18px",
+                fontSize: "14px",
+                opacity: 0.7,
+              }}
+            >
+              {apiError}
+            </p>
+          )}
         </div>
-
       </section>
 
-
-      {/* =====================================================
-          FACULTY CATEGORIES
-      ===================================================== */}
-
+      {/* FACULTY CATEGORIES */}
       <section className="faculty-categories faculty-section">
-
         <div className="faculty-container">
-
           <div className="faculty-section-heading faculty-heading-light">
-
             <div className="faculty-kicker light">
               <span>05</span>
               <span>FACULTY STRUCTURE</span>
             </div>
 
             <div>
-
               <h2>
                 A connected
                 <span>school team.</span>
@@ -441,16 +428,11 @@ function Faculty() {
                 Different roles work together to support learning,
                 school operations and student development.
               </p>
-
             </div>
-
           </div>
 
-
           <div className="faculty-category-grid">
-
             {facultyCategories.map((category, index) => {
-
               const icons = [
                 BookOpen,
                 Award,
@@ -464,46 +446,31 @@ function Faculty() {
                   className="faculty-category-card"
                   key={category.title}
                 >
-
                   <div className="faculty-category-top">
-
                     <span>
-                      0{index + 1}
+                      {String(index + 1).padStart(2, "0")}
                     </span>
 
                     <div className="faculty-category-icon">
                       <Icon size={19} />
                     </div>
-
                   </div>
 
                   <h3>{category.title}</h3>
 
                   <p>{category.description}</p>
-
                 </article>
               );
             })}
-
           </div>
-
         </div>
-
       </section>
 
-
-      {/* =====================================================
-          FACULTY APPROACH
-      ===================================================== */}
-
+      {/* FACULTY APPROACH */}
       <section className="faculty-approach faculty-section">
-
         <div className="faculty-container">
-
           <div className="faculty-approach-grid">
-
             <div className="faculty-approach-content">
-
               <div className="faculty-kicker">
                 <span>06</span>
                 <span>OUR APPROACH</span>
@@ -521,7 +488,6 @@ function Faculty() {
               </p>
 
               <div className="faculty-approach-points">
-
                 <div>
                   <span>01</span>
                   <strong>Clear Communication</strong>
@@ -536,14 +502,10 @@ function Faculty() {
                   <span>03</span>
                   <strong>Continuous Development</strong>
                 </div>
-
               </div>
-
             </div>
 
-
             <div className="faculty-approach-panel">
-
               <div className="faculty-approach-panel-icon">
                 <GraduationCap size={26} />
               </div>
@@ -560,26 +522,15 @@ function Faculty() {
                 where students can ask questions, participate, learn
                 from mistakes and continue developing.
               </p>
-
             </div>
-
           </div>
-
         </div>
-
       </section>
 
-
-      {/* =====================================================
-          CTA
-      ===================================================== */}
-
+      {/* CTA */}
       <section className="faculty-final">
-
         <div className="faculty-container">
-
           <div className="faculty-final-inner">
-
             <div className="faculty-kicker">
               <span>07</span>
               <span>NEXT STEP</span>
@@ -596,7 +547,6 @@ function Faculty() {
             </p>
 
             <div className="faculty-final-actions">
-
               <Link
                 to="/campus"
                 className="faculty-primary-button"
@@ -612,15 +562,10 @@ function Faculty() {
                 <span>Contact School</span>
                 <ArrowRight size={18} />
               </Link>
-
             </div>
-
           </div>
-
         </div>
-
       </section>
-
     </div>
   );
 }

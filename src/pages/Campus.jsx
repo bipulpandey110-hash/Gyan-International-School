@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+
 import {
   ArrowRight,
   ArrowUpRight,
@@ -7,15 +9,158 @@ import {
 } from "lucide-react";
 
 import { Link } from "react-router-dom";
+
 import schoolData from "../data/schoolData";
+import schoolAPI from "../services/api";
+
 import "./campus.css";
 
 function Campus() {
-  const { school, images, campusAreas } = schoolData;
+  const {
+    school: localSchool,
+    images,
+    campusAreas: localCampusAreas,
+  } = schoolData;
 
-  const campusImages = Array.isArray(images.campus)
+  const [school, setSchool] = useState(localSchool);
+
+  const [campusAreas, setCampusAreas] = useState(
+    localCampusAreas
+  );
+
+  const campusImages = Array.isArray(
+    images?.campus
+  )
     ? images.campus
     : [];
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadCampusData = async () => {
+      try {
+        const [
+          schoolResponse,
+          facilitiesResponse,
+        ] = await Promise.all([
+          schoolAPI.getSchool(),
+          schoolAPI.getFacilities(),
+        ]);
+
+        if (!mounted) return;
+
+        // =====================================================
+        // SCHOOL INFORMATION
+        // =====================================================
+
+        const schoolRecord = Array.isArray(
+          schoolResponse
+        )
+          ? schoolResponse[0]
+          : schoolResponse;
+
+        if (schoolRecord) {
+          setSchool((current) => ({
+            ...current,
+
+            fullName:
+              schoolRecord.name ||
+              current.fullName,
+
+            shortName:
+              schoolRecord.short_name ||
+              current.shortName,
+
+            tagline:
+              schoolRecord.tagline ||
+              current.tagline,
+
+            description:
+              schoolRecord.description ||
+              current.description,
+
+            classes:
+              schoolRecord.classes ||
+              current.classes,
+
+            address:
+              schoolRecord.address ||
+              current.address,
+
+            phone:
+              schoolRecord.phone ||
+              current.phone,
+
+            email:
+              schoolRecord.email ||
+              current.email,
+
+            year:
+              schoolRecord.established_year ||
+              current.year,
+          }));
+        }
+
+        // =====================================================
+        // FACILITIES / CAMPUS AREAS
+        // =====================================================
+
+        const facilityData = Array.isArray(
+          facilitiesResponse
+        )
+          ? facilitiesResponse
+          : facilitiesResponse?.results || [];
+
+        if (facilityData.length > 0) {
+          const formattedFacilities =
+            facilityData.map(
+              (facility) => ({
+                id: facility.id,
+
+                title:
+                  facility.title ||
+                  "School Facility",
+
+                description:
+                  facility.description ||
+                  "A dedicated space supporting student learning and development.",
+
+                image:
+                  facility.image_url ||
+                  null,
+
+                icon:
+                  facility.icon ||
+                  "",
+
+                isFeatured:
+                  Boolean(
+                    facility.is_featured
+                  ),
+
+                isActive:
+                  facility.is_active !== false,
+              })
+            );
+
+          setCampusAreas(
+            formattedFacilities
+          );
+        }
+      } catch (error) {
+        console.error(
+          "Failed to load Campus API data:",
+          error
+        );
+      }
+    };
+
+    loadCampusData();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   return (
     <div className="campus-page">
@@ -31,16 +176,31 @@ function Campus() {
           <div className="campus-hero-top">
 
             <div className="campus-kicker">
+
               <span>01</span>
-              <span>THE CAMPUS</span>
+
+              <span>
+                THE CAMPUS
+              </span>
+
             </div>
 
+
             <div className="campus-hero-meta">
-              <span>{school.classes}</span>
+
+              <span>
+                {school.classes ||
+                  "Classes 0 to 10"}
+              </span>
 
               <div className="campus-meta-icon">
-                <Building2 size={16} />
+
+                <Building2
+                  size={16}
+                />
+
               </div>
+
             </div>
 
           </div>
@@ -54,12 +214,17 @@ function Campus() {
 
             <h1>
               A place built
-              <span>for learning.</span>
+              <span>
+                for learning.
+              </span>
             </h1>
 
             <p>
-              Explore the spaces and surroundings that form part
-              of everyday school life at {school.shortName}.
+              Explore the spaces and
+              surroundings that form part of
+              everyday school life at{" "}
+              {school.shortName ||
+                "Gyan International"}.
             </p>
 
           </div>
@@ -68,18 +233,43 @@ function Campus() {
           <div className="campus-hero-bottom">
 
             <div>
-              <strong>04</strong>
-              <span>CAMPUS VIEWS</span>
+
+              <strong>
+                {String(
+                  campusImages.length || 0
+                ).padStart(2, "0")}
+              </strong>
+
+              <span>
+                CAMPUS VIEWS
+              </span>
+
             </div>
 
-            <div>
-              <strong>01</strong>
-              <span>SCHOOL ENVIRONMENT</span>
-            </div>
 
             <div>
-              <strong>∞</strong>
-              <span>DAILY EXPERIENCES</span>
+
+              <strong>
+                01
+              </strong>
+
+              <span>
+                SCHOOL ENVIRONMENT
+              </span>
+
+            </div>
+
+
+            <div>
+
+              <strong>
+                ∞
+              </strong>
+
+              <span>
+                DAILY EXPERIENCES
+              </span>
+
             </div>
 
           </div>
@@ -101,7 +291,9 @@ function Campus() {
 
             <div className="campus-intro-index">
 
-              <span>02</span>
+              <span>
+                02
+              </span>
 
               <strong>
                 SPACE
@@ -117,25 +309,41 @@ function Campus() {
             <div className="campus-intro-content">
 
               <div className="campus-kicker">
-                <span>THE ENVIRONMENT</span>
+
+                <span>
+                  THE ENVIRONMENT
+                </span>
+
               </div>
+
 
               <h2>
                 More than
-                <span>a building.</span>
+                <span>
+                  a building.
+                </span>
               </h2>
 
-              <p>
-                A school environment becomes part of a student's
-                everyday learning experience. Classrooms, activity
-                spaces and shared areas create opportunities for
-                interaction, participation and discovery.
-              </p>
 
               <p>
-                The campus experience at {school.shortName} is
-                presented through the spaces and moments that
-                students experience as part of their school journey.
+                A school environment becomes
+                part of a student's everyday
+                learning experience. Classrooms,
+                activity spaces and shared areas
+                create opportunities for
+                interaction, participation and
+                discovery.
+              </p>
+
+
+              <p>
+                The campus experience at{" "}
+                {school.shortName ||
+                  "Gyan International"}{" "}
+                is presented through the spaces
+                and moments that students
+                experience as part of their school
+                journey.
               </p>
 
             </div>
@@ -158,21 +366,33 @@ function Campus() {
           <div className="campus-section-heading">
 
             <div className="campus-kicker">
-              <span>03</span>
-              <span>CAMPUS EXPERIENCE</span>
+
+              <span>
+                03
+              </span>
+
+              <span>
+                CAMPUS EXPERIENCE
+              </span>
+
             </div>
+
 
             <div>
 
               <h2>
                 Spaces that
-                <span>support learning.</span>
+                <span>
+                  support learning.
+                </span>
               </h2>
 
               <p>
-                From focused classroom environments to spaces for
-                activities and interaction, every part of school life
-                contributes to the student experience.
+                From focused classroom
+                environments to spaces for
+                activities and interaction, every
+                part of school life contributes to
+                the student experience.
               </p>
 
             </div>
@@ -184,56 +404,83 @@ function Campus() {
 
             <div className="campus-feature-grid">
 
-              {campusImages.slice(0, 4).map((item, index) => (
+              {campusImages
+                .slice(0, 4)
+                .map(
+                  (item, index) => (
 
-                <article
-                  className={`campus-image-card ${
-                    index === 0
-                      ? "campus-image-card-large"
-                      : ""
-                  }`}
-                  key={item.id || index}
-                >
+                    <article
+                      className={`campus-image-card ${
+                        index === 0
+                          ? "campus-image-card-large"
+                          : ""
+                      }`}
+                      key={
+                        item.id ||
+                        item.src ||
+                        index
+                      }
+                    >
 
-                  <div className="campus-image-wrap">
+                      <div className="campus-image-wrap">
 
-                    <img
-                      src={item.src}
-                      alt={item.title || "School campus"}
-                    />
+                        <img
+                          src={item.src}
+                          alt={
+                            item.title ||
+                            "School campus"
+                          }
+                        />
 
-                    <div className="campus-image-overlay"></div>
+                        <div className="campus-image-overlay" />
 
-                    <div className="campus-image-number">
-                      0{index + 1}
-                    </div>
+                        <div className="campus-image-number">
 
-                    <div className="campus-image-expand">
-                      <Maximize2 size={15} />
-                    </div>
+                          {String(
+                            index + 1
+                          ).padStart(2, "0")}
 
-                  </div>
+                        </div>
+
+                        <div className="campus-image-expand">
+
+                          <Maximize2
+                            size={15}
+                          />
+
+                        </div>
+
+                      </div>
 
 
-                  <div className="campus-image-content">
+                      <div className="campus-image-content">
 
-                    <span>
-                      CAMPUS / 0{index + 1}
-                    </span>
+                        <span>
+                          CAMPUS /{" "}
+                          {String(
+                            index + 1
+                          ).padStart(2, "0")}
+                        </span>
 
-                    <h3>
-                      {item.title || "Campus Space"}
-                    </h3>
+                        <h3>
+                          {item.title ||
+                            "Campus Space"}
+                        </h3>
 
-                    {item.description && (
-                      <p>{item.description}</p>
-                    )}
+                        {item.description && (
+                          <p>
+                            {
+                              item.description
+                            }
+                          </p>
+                        )}
 
-                  </div>
+                      </div>
 
-                </article>
+                    </article>
 
-              ))}
+                  )
+                )}
 
             </div>
 
@@ -241,20 +488,29 @@ function Campus() {
 
             <div className="campus-empty">
 
-              <Building2 size={25} />
+              <Building2
+                size={25}
+              />
 
               <div>
 
-                <span>CAMPUS IMAGES</span>
+                <span>
+                  CAMPUS IMAGES
+                </span>
 
                 <h3>
-                  Campus photographs will appear here.
+                  Campus photographs
+                  will appear here.
                 </h3>
 
                 <p>
-                  Add campus images inside the
-                  <strong> schoolData.images.campus</strong>
-                  array to display them automatically.
+                  Add campus images inside
+                  the{" "}
+                  <strong>
+                    schoolData.images.campus
+                  </strong>{" "}
+                  array to display them
+                  automatically.
                 </p>
 
               </div>
@@ -279,20 +535,31 @@ function Campus() {
           <div className="campus-section-heading campus-heading-light">
 
             <div className="campus-kicker light">
-              <span>04</span>
-              <span>KEY SPACES</span>
+
+              <span>
+                04
+              </span>
+
+              <span>
+                KEY SPACES
+              </span>
+
             </div>
+
 
             <div>
 
               <h2>
                 Designed around
-                <span>school life.</span>
+                <span>
+                  school life.
+                </span>
               </h2>
 
               <p>
-                Different spaces contribute to different parts of
-                the learning and student experience.
+                Different spaces contribute to
+                different parts of the learning
+                and student experience.
               </p>
 
             </div>
@@ -302,30 +569,46 @@ function Campus() {
 
           <div className="campus-area-grid">
 
-            {campusAreas.map((area, index) => (
+            {campusAreas.map(
+              (area, index) => (
 
-              <article
-                className="campus-area-card"
-                key={area.title}
-              >
+                <article
+                  className="campus-area-card"
+                  key={
+                    area.id ||
+                    area.title ||
+                    index
+                  }
+                >
 
-                <div className="campus-area-top">
+                  <div className="campus-area-top">
 
-                  <span>
-                    0{index + 1}
-                  </span>
+                    <span>
+                      {String(
+                        index + 1
+                      ).padStart(2, "0")}
+                    </span>
 
-                  <ArrowUpRight size={18} />
+                    <ArrowUpRight
+                      size={18}
+                    />
 
-                </div>
+                  </div>
 
-                <h3>{area.title}</h3>
 
-                <p>{area.description}</p>
+                  <h3>
+                    {area.title}
+                  </h3>
 
-              </article>
 
-            ))}
+                  <p>
+                    {area.description}
+                  </p>
+
+                </article>
+
+              )
+            )}
 
           </div>
 
@@ -347,46 +630,89 @@ function Campus() {
             <div className="campus-journey-content">
 
               <div className="campus-kicker">
-                <span>05</span>
-                <span>DAILY EXPERIENCE</span>
+
+                <span>
+                  05
+                </span>
+
+                <span>
+                  DAILY EXPERIENCE
+                </span>
+
               </div>
+
 
               <h2>
                 Every space
-                <span>has a purpose.</span>
+                <span>
+                  has a purpose.
+                </span>
               </h2>
 
+
               <p>
-                A student's school day is made up of many small
-                experiences — entering the campus, attending classes,
-                interacting with teachers, participating in activities
-                and spending time with classmates.
+                A student's school day is made
+                up of many small experiences —
+                entering the campus, attending
+                classes, interacting with teachers,
+                participating in activities and
+                spending time with classmates.
               </p>
+
 
               <div className="campus-journey-points">
 
                 <div>
-                  <span>01</span>
-                  <strong>Learn</strong>
+
+                  <span>
+                    01
+                  </span>
+
+                  <strong>
+                    Learn
+                  </strong>
+
                   <small>
-                    Focused academic experiences.
+                    Focused academic
+                    experiences.
                   </small>
+
                 </div>
 
-                <div>
-                  <span>02</span>
-                  <strong>Participate</strong>
-                  <small>
-                    Activities and shared experiences.
-                  </small>
-                </div>
 
                 <div>
-                  <span>03</span>
-                  <strong>Grow</strong>
+
+                  <span>
+                    02
+                  </span>
+
+                  <strong>
+                    Participate
+                  </strong>
+
                   <small>
-                    Confidence through everyday learning.
+                    Activities and shared
+                    experiences.
                   </small>
+
+                </div>
+
+
+                <div>
+
+                  <span>
+                    03
+                  </span>
+
+                  <strong>
+                    Grow
+                  </strong>
+
+                  <small>
+                    Confidence through
+                    everyday learning.
+                  </small>
+
                 </div>
 
               </div>
@@ -411,11 +737,13 @@ function Campus() {
                     }
                   />
 
-                  <div className="campus-journey-image-overlay"></div>
+                  <div className="campus-journey-image-overlay" />
 
                   <div className="campus-journey-badge">
 
-                    <Sparkles size={16} />
+                    <Sparkles
+                      size={16}
+                    />
 
                     <span>
                       SCHOOL
@@ -431,7 +759,9 @@ function Campus() {
 
                 <div className="campus-journey-placeholder">
 
-                  <Building2 size={35} />
+                  <Building2
+                    size={35}
+                  />
 
                   <span>
                     CAMPUS
@@ -463,18 +793,30 @@ function Campus() {
             <div>
 
               <div className="campus-kicker">
-                <span>06</span>
-                <span>SEE MORE</span>
+
+                <span>
+                  06
+                </span>
+
+                <span>
+                  SEE MORE
+                </span>
+
               </div>
+
 
               <h2>
                 Explore school
-                <span>moments.</span>
+                <span>
+                  moments.
+                </span>
               </h2>
 
+
               <p>
-                Visit the gallery to explore more photographs from
-                school life, student activities and the campus.
+                Visit the gallery to explore more
+                photographs from school life,
+                student activities and the campus.
               </p>
 
             </div>
@@ -484,8 +826,15 @@ function Campus() {
               to="/gallery"
               className="campus-gallery-button"
             >
-              <span>Open Gallery</span>
-              <ArrowUpRight size={18} />
+
+              <span>
+                Open Gallery
+              </span>
+
+              <ArrowUpRight
+                size={18}
+              />
+
             </Link>
 
           </div>
@@ -506,19 +855,33 @@ function Campus() {
           <div className="campus-final-inner">
 
             <div className="campus-kicker">
-              <span>07</span>
-              <span>NEXT STEP</span>
+
+              <span>
+                07
+              </span>
+
+              <span>
+                NEXT STEP
+              </span>
+
             </div>
+
 
             <h2>
               See where the
-              <span>journey begins.</span>
+              <span>
+                journey begins.
+              </span>
             </h2>
 
+
             <p>
-              Learn more about academics, admissions and life at
-              {` ${school.shortName}.`}
+              Learn more about academics,
+              admissions and life at{" "}
+              {school.shortName ||
+                "Gyan International"}.
             </p>
+
 
             <div className="campus-final-actions">
 
@@ -526,16 +889,31 @@ function Campus() {
                 to="/academics"
                 className="campus-primary-button"
               >
-                <span>Explore Academics</span>
-                <ArrowUpRight size={17} />
+
+                <span>
+                  Explore Academics
+                </span>
+
+                <ArrowUpRight
+                  size={17}
+                />
+
               </Link>
+
 
               <Link
                 to="/admissions"
                 className="campus-secondary-button"
               >
-                <span>Admissions</span>
-                <ArrowRight size={17} />
+
+                <span>
+                  Admissions
+                </span>
+
+                <ArrowRight
+                  size={17}
+                />
+
               </Link>
 
             </div>
